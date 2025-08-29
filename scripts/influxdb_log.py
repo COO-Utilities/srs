@@ -47,7 +47,7 @@ def main(config_file):
             ppoint = (
                 Point("srs_ptc10")
                 .field("output", output)
-                .tag("units", "Watts")
+                .tag("units", "Amps")
                 .tag("channel", f"{cfg['channel']}")
             )
             write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=ppoint)
