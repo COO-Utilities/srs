@@ -36,8 +36,8 @@ def main(config_file):
                 value = ptc.get_channel_value(chan)
                 point = (
                     Point("srs_ptc10")
-                    .field(chan['field'], value)
-                    .tag("units", chan['units'])
+                    .field(channels[chan]['field'], value)
+                    .tag("units", channels[chan]['units'])
                     .tag("channel", f"{cfg['db_channel']}")
                 )
                 write_api.write(bucket=cfg['db_bucket'], org=cfg['db_org'], record=point)
