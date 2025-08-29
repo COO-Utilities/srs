@@ -32,7 +32,7 @@ def main(config_file):
     try:
         while True:
             ## Temperature
-            temperature = ptc.get_channel_value('A2')
+            temperature = ptc.get_channel_value('2A')
             tpoint = (
                 Point("srs_ptc10")
                 .field("temperature", temperature)

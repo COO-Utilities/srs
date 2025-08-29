@@ -173,11 +173,12 @@ class PTC10:
             float: Current value, or NaN if invalid.
         """
         if self.validate_channel_name(channel):
+            self.logger.debug("Channel name validated: %s", channel)
             response = self.query(f"{channel}?")
             try:
                 value = float(response)
                 if self.logger:
-                    self.logger.info("Channel %s value: %f", channel, value)
+                    self.logger.debug("Channel %s value: %f", channel, value)
                 return value
             except ValueError:
                 if self.logger:
