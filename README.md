@@ -34,7 +34,7 @@ ptc10/
 import ptc10
 
 # Ethernet example
-ptc = ptc10.PTC10.connect(method="ethernet", host="192.168.29.150", tcp_port=23)
+ptc = ptc10.PTC10.connect(method="ethernet", host="192.168.29.150", port=23)
 
 # Identify controller
 print("Device ID:", ptc.identify())

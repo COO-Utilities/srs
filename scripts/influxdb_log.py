@@ -23,58 +23,44 @@ def main(config_file):
     db_client = InfluxDBClient(url=cfg['url'], token=cfg['db_token'], org=cfg['org'])
     write_api = db_client.write_api(write_options=SYNCHRONOUS)
 
-    ## Connect to GammaVac PTC10
+    ## Connect to SRS PTC10
     if verbose:
         print("Connecting to SRS PTC10 controller...")
-    ptc = ptc10.PTC10.connect(method="ethernet", host="192.168.29.150", tcp_port=23)
+    ptc = ptc10.PTC10()
+    ptc.connect(host=cfg['device_host'], port=cfg['device_port'])
 
-    ## Check pump status
-    if 'Running' in gv.get_pump_status():
-        gv.set_units("T")   # set units to Torr
-        try:
-            while True:
-                ## Pressure
-                pressure = gv.read_pressure()
-                ppoint = (
-                    Point("srs_ptc10")
-                    .field("pressure", pressure)
-                    .tag("units", "Torr")
-                    .tag("channel", f"{cfg['channel']}")
-                )
-                write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=ppoint)
-                if verbose:
-                    print(ppoint)
-                current = gv.read_current()
-                ## Current
-                cpoint = (
-                    Point("srs_ptc10")
-                    .field("current", current)
-                    .tag("units", "Amps")
-                    .tag("channel", f"{cfg['channel']}")
-                )
-                write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=cpoint)
-                if verbose:
-                    print(cpoint)
-                ## Voltage
-                voltage = gv.read_voltage()
-                vpoint = (
-                    Point("srs_ptc10")
-                    .field("voltage", voltage)
-                    .tag("units", "Volts")
-                    .tag("channel", f"{cfg['channel']}")
-                )
-                write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=vpoint)
-                if verbose:
-                    print(vpoint)
-                # Sleep for interval_secs
-                time.sleep(cfg['interval_secs'])
+    try:
+        while True:
+            ## Temperature
+            temperature = ptc.get_channel_value('A2')
+            tpoint = (
+                Point("srs_ptc10")
+                .field("temperature", temperature)
+                .tag("units", "degC")
+                .tag("channel", f"{cfg['channel']}")
+            )
+            write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=tpoint)
+            if verbose:
+                print(tpoint)
+            ## Power
+            output = ptc.get_channel_value('Out 1')
+            ppoint = (
+                Point("srs_ptc10")
+                .field("output", output)
+                .tag("units", "Watts")
+                .tag("channel", f"{cfg['channel']}")
+            )
+            write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=ppoint)
+            if verbose:
+                print(ppoint)
 
-        except KeyboardInterrupt:
-            print("\nShutting down InfluxDB logging...")
-            db_client.close()
-            gv.disconnect()
-    else:
-        print("Pump not running")
+            # Sleep for interval_secs
+            time.sleep(cfg['interval_secs'])
+
+    except KeyboardInterrupt:
+        print("\nShutting down InfluxDB logging...")
+        db_client.close()
+        ptc.close()
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
