@@ -2,6 +2,7 @@
 PTC10 Controller Interface
 """
 from typing import List, Dict, Optional
+from errno import EISCONN
 import logging
 import sys
 import socket
@@ -12,6 +13,8 @@ class PTC10:
     """
     logger = None
     sock = None
+    connected = False
+    success = False
 
     def __init__(self, logfile: Optional[str] = None, log: bool = True):
         """
@@ -41,11 +44,54 @@ class PTC10:
         else:
             self.logger = None
 
-    def connect(self, host: str =None, port: int = None) -> None:
-        """Connect to the PTC10 controller."""
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(1.0)
-        self.sock.connect((host, port))
+    def connect(self, host: str, port: int) -> None:
+        """ Connect to controller. """
+        if self.sock is None:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.sock.connect((host, port))
+            if self.logger:
+                self.logger.debug("Connected to %(host)s:%(port)s", {
+                    'host': host,
+                    'port': port
+                })
+            self.connected = True
+            self.success = True
+
+        except OSError as e:
+            if e.errno == EISCONN:
+                if self.logger:
+                    self.logger.debug("Already connected")
+                self.connected = True
+                self.success = True
+            else:
+                if self.logger:
+                    self.logger.error("Connection error: %s", e.strerror)
+                self.connected = False
+                self.success = False
+        # clear socket
+        if self.connected:
+            self.__clear_socket()
+
+    def __clear_socket(self):
+        """ Clear socket buffer. """
+        if self.sock is not None:
+            self.sock.setblocking(False)
+            while True:
+                try:
+                    _ = self.sock.recv(1024)
+                except BlockingIOError:
+                    break
+            self.sock.setblocking(True)
+
+    def set_verbose(self, verbose: bool =True) -> None:
+        """Set verbose mode."""
+
+        if self.logger:
+            if verbose:
+                self.logger.setLevel(logging.DEBUG)
+            else:
+                self.logger.setLevel(logging.INFO)
 
     def write(self, msg: str):
         """
@@ -55,9 +101,10 @@ class PTC10:
             msg (str): The message to send (e.g., '3A?').
         """
         try:
+            self.logger.debug('Sending: %s', msg)
             self.sock.sendall((msg + "\n").encode())
         except Exception as ex:
-            raise IOError(f"Failed to write message: {ex}")
+            raise IOError(f'Failed to write message: {ex}') from ex
 
     def read(self) -> str:
         """
@@ -67,9 +114,11 @@ class PTC10:
             str: The received message, stripped of trailing newline.
         """
         try:
-            return self.sock.recv(4096).decode().strip()
+            retval = self.sock.recv(4096).decode().strip()
+            self.logger.debug('Received: %s', retval)
+            return retval
         except Exception as ex:
-            raise IOError(f"Failed to read message: {ex}")
+            raise IOError(f"Failed to read message: {ex}") from ex
 
     def query(self, msg: str) -> str:
         """
@@ -89,9 +138,10 @@ class PTC10:
         Close the connection to the controller.
         """
         try:
+            self.logger.debug('Closing connection to controller')
             self.sock.close()
         except Exception as ex:
-            raise IOError(f"Failed to close connection: {ex}")
+            raise IOError(f"Failed to close connection: {ex}") from ex
 
     def identify(self) -> str:
         """
@@ -154,7 +204,8 @@ class PTC10:
         """
         response = self.query("getOutputNames?")
         names = [name.strip() for name in response.split(",")]
-        self.logger.info("Channel names: %s", names)
+        if self.logger:
+            self.logger.info("Channel names: %s", names)
         return names
 
     def get_named_output_dict(self) -> Dict[str, float]:
@@ -167,5 +218,6 @@ class PTC10:
         names = self.get_channel_names()
         values = self.get_all_values()
         output_dict = dict(zip(names, values))
-        self.logger.info("Named outputs: %s", output_dict)
+        if self.logger:
+            self.logger.info("Named outputs: %s", output_dict)
         return output_dict
