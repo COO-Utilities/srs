@@ -15,6 +15,7 @@ class PTC10:
     sock = None
     connected = False
     success = False
+    channel_names = None
 
     def __init__(self, logfile: Optional[str] = None, log: bool = True):
         """
@@ -155,6 +156,12 @@ class PTC10:
             self.logger.info("Device identification: %s", id_str)
         return id_str
 
+    def validate_channel_name(self, channel_name: str) -> bool:
+        """Is channel name valid?"""
+        if self.channel_names is None:
+            self.channel_names = self.get_channel_names()
+        return channel_name in self.channel_names
+
     def get_channel_value(self, channel: str) -> float:
         """
         Read the latest value of a specific channel.
@@ -165,19 +172,26 @@ class PTC10:
         Returns:
             float: Current value, or NaN if invalid.
         """
-        response = self.query(f"{channel}?")
-        try:
-            value = float(response)
+        if self.validate_channel_name(channel):
+            response = self.query(f"{channel}?")
+            try:
+                value = float(response)
+                if self.logger:
+                    self.logger.info("Channel %s value: %f", channel, value)
+                return value
+            except ValueError:
+                if self.logger:
+                    self.logger.error(
+                        "Invalid float returned for channel %s: %s", channel, response
+                    )
+                else:
+                    print("Invalid float returned for channel %s: %s", channel, response)
+                return float("nan")
+        else:
             if self.logger:
-                self.logger.info("Channel %s value: %f", channel, value)
-            return value
-        except ValueError:
-            if self.logger:
-                self.logger.error(
-                    "Invalid float returned for channel %s: %s", channel, response
-                )
+                self.logger.error("Invalid channel name: %s", channel)
             else:
-                print("Invalid float returned for channel %s: %s", channel, response)
+                print("Invalid channel name: %s", channel)
             return float("nan")
 
     def get_all_values(self) -> List[float]:
