@@ -20,7 +20,7 @@ def main(config_file):
     ## Connect to InfluxDB
     if verbose:
         print("Connecting to InfluxDB...")
-    db_client = InfluxDBClient(url=cfg['url'], token=cfg['db_token'], org=cfg['org'])
+    db_client = InfluxDBClient(url=cfg['db_url'], token=cfg['db_token'], org=cfg['db_org'])
     write_api = db_client.write_api(write_options=SYNCHRONOUS)
 
     ## Connect to SRS PTC10
@@ -30,29 +30,19 @@ def main(config_file):
     ptc.connect(host=cfg['device_host'], port=cfg['device_port'])
 
     try:
+        channels = cfg['log_channels']
         while True:
-            ## Temperature
-            temperature = ptc.get_channel_value('2A')
-            tpoint = (
-                Point("srs_ptc10")
-                .field("temperature", temperature)
-                .tag("units", "degC")
-                .tag("channel", f"{cfg['channel']}")
-            )
-            write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=tpoint)
-            if verbose:
-                print(tpoint)
-            ## Power
-            output = ptc.get_channel_value('Out 1')
-            ppoint = (
-                Point("srs_ptc10")
-                .field("output", output)
-                .tag("units", "Amps")
-                .tag("channel", f"{cfg['channel']}")
-            )
-            write_api.write(bucket=cfg['bucket'], org=cfg['org'], record=ppoint)
-            if verbose:
-                print(ppoint)
+            for chan in channels:
+                value = ptc.get_channel_value(chan)
+                point = (
+                    Point("srs_ptc10")
+                    .field(chan['field'], value)
+                    .tag("units", chan['units'])
+                    .tag("channel", f"{cfg['db_channel']}")
+                )
+                write_api.write(bucket=cfg['db_bucket'], org=cfg['db_org'], record=point)
+                if verbose:
+                    print(point)
 
             # Sleep for interval_secs
             time.sleep(cfg['interval_secs'])
