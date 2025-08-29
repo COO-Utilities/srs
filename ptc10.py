@@ -209,7 +209,7 @@ class PTC10:
             float(val) if val != "NaN" else float("nan") for val in response.split(",")
         ]
         if self.logger:
-            self.logger.info("Output values: %s", values)
+            self.logger.debug("Output values: %s", values)
         return values
 
     def get_channel_names(self) -> List[str]:
@@ -222,7 +222,7 @@ class PTC10:
         response = self.query("getOutputNames?")
         names = [name.strip() for name in response.split(",")]
         if self.logger:
-            self.logger.info("Channel names: %s", names)
+            self.logger.debug("Channel names: %s", names)
         return names
 
     def get_named_output_dict(self) -> Dict[str, float]:
@@ -236,5 +236,5 @@ class PTC10:
         values = self.get_all_values()
         output_dict = dict(zip(names, values))
         if self.logger:
-            self.logger.info("Named outputs: %s", output_dict)
+            self.logger.debug("Named outputs: %s", output_dict)
         return output_dict
