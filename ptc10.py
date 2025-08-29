@@ -4,29 +4,23 @@ PTC10 Controller Interface
 from typing import List, Dict, Optional
 import logging
 import sys
-
-from .ptc10_connection import PTC10Connection, PTC10Config
-
+import socket
 
 class PTC10:
     """
     Interface for controlling the PTC10 controller.
     """
     logger = None
+    sock = None
 
-    def __init__(
-            self, conn: PTC10Connection, logfile: Optional[str] = None, log: bool = True
-    ):
+    def __init__(self, logfile: Optional[str] = None, log: bool = True):
         """
         Initialize the PTC10 controller interface.
 
         Args:
-            conn (PTC10Connection): A connection object for communicating with the PTC10 controller
-                                    over serial or Ethernet.
             logfile (str, optional): Path to log file.
             log (bool): If True, start logging.
         """
-        self.conn = conn
         if log:
             if logfile is None:
                 logfile = __name__.rsplit('.', 1)[-1] + '.log'
@@ -47,58 +41,57 @@ class PTC10:
         else:
             self.logger = None
 
-        if self.logger:
-            self.logger.debug("PTC10 initialized with connection: %s", conn)
+    def connect(self, host: str =None, port: int = None) -> None:
+        """Connect to the PTC10 controller."""
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.settimeout(1.0)
+        self.sock.connect((host, port))
 
-    @classmethod
-    # pylint: disable=too-many-arguments
-    def connect(
-            cls,
-            method: str = "serial",
-            port: Optional[str] = None,
-            baudrate: int = 9600,
-            host: Optional[str] = None,
-            tcp_port: int = 23,
-            timeout: float = 1.0,
-            logfile: Optional[str] = None,
-            log: bool = True,
-    ) -> "PTC10":
+    def write(self, msg: str):
         """
-        Create a new PTC10 instance with an internal connection setup.
+        Send a message to the controller (adds newline).
 
         Args:
-            method (str): 'serial' or 'ethernet'.
-            port (str): Serial port (e.g., '/dev/ttyUSB0') for serial connection.
-            baudrate (int): Baudrate for serial (default: 9600).
-            host (str): IP address for ethernet connection.
-            tcp_port (int): TCP port for ethernet (default: 23).
-            timeout (float): Timeout for the connection (in seconds).
-            logfile (str, optional): Path to log file.
-            log (bool): Log output if True.
+            msg (str): The message to send (e.g., '3A?').
+        """
+        try:
+            self.sock.sendall((msg + "\n").encode())
+        except Exception as ex:
+            raise IOError(f"Failed to write message: {ex}")
+
+    def read(self) -> str:
+        """
+        Read a response from the controller.
 
         Returns:
-            PTC10: A new connected PTC10 instance.
+            str: The received message, stripped of trailing newline.
         """
-        cls.logger.info("Connecting to PTC10 using method: %s", method)
-        config = PTC10Config(
-            method=method,
-            port=port,
-            baudrate=baudrate,
-            host=host,
-            tcp_port=tcp_port,
-            timeout=timeout,
-        )
-        conn = PTC10Connection(config=config)
-        cls.logger.debug("Connection established: %s", conn)
-        return cls(conn, logfile=logfile, log=log)
+        try:
+            return self.sock.recv(4096).decode().strip()
+        except Exception as ex:
+            raise IOError(f"Failed to read message: {ex}")
+
+    def query(self, msg: str) -> str:
+        """
+        Send a command and read the immediate response.
+
+        Args:
+            msg (str): Command string to send.
+
+        Returns:
+            str: Response from the controller.
+        """
+        self.write(msg)
+        return self.read()
 
     def close(self):
         """
-        Close the connection to the PTC10.
+        Close the connection to the controller.
         """
-        if self.logger:
-            self.logger.info("Closing connection to PTC10")
-        self.conn.close()
+        try:
+            self.sock.close()
+        except Exception as ex:
+            raise IOError(f"Failed to close connection: {ex}")
 
     def identify(self) -> str:
         """
@@ -107,7 +100,7 @@ class PTC10:
         Returns:
             str: Device identification (e.g. manufacturer, model, serial number, firmware version).
         """
-        id_str = self.conn.query("*IDN?")
+        id_str = self.query("*IDN?")
         if self.logger:
             self.logger.info("Device identification: %s", id_str)
         return id_str
@@ -122,7 +115,7 @@ class PTC10:
         Returns:
             float: Current value, or NaN if invalid.
         """
-        response = self.conn.query(f"{channel}?")
+        response = self.query(f"{channel}?")
         try:
             value = float(response)
             if self.logger:
@@ -144,7 +137,7 @@ class PTC10:
         Returns:
             List[float]: List of float values, with NaN where applicable.
         """
-        response = self.conn.query("getOutput?")
+        response = self.query("getOutput?")
         values = [
             float(val) if val != "NaN" else float("nan") for val in response.split(",")
         ]
@@ -159,7 +152,7 @@ class PTC10:
         Returns:
             List[str]: List of channel names.
         """
-        response = self.conn.query("getOutputNames?")
+        response = self.query("getOutputNames?")
         names = [name.strip() for name in response.split(",")]
         self.logger.info("Channel names: %s", names)
         return names
