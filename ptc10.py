@@ -174,7 +174,8 @@ class PTC10:
         """
         if self.validate_channel_name(channel):
             self.logger.debug("Channel name validated: %s", channel)
-            response = self.query(f"{channel}?")
+            # Spaces not allowed
+            response = self.query(f"{channel.replace(" ", "")}?")
             try:
                 value = float(response)
                 if self.logger:
