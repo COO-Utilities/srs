@@ -1,0 +1,12 @@
+{
+  "url": "localhost:8086",
+  "db_token": "",
+  "org": "Organization",
+  "bucket": "bucket",
+  "channel": "Vac-Ion",
+  "gamma_host": "lantronix",
+  "gamma_port": 10016,
+  "gamma_bus_address": 1,
+  "interval_secs": 30,
+  "verbose": 0
+}
