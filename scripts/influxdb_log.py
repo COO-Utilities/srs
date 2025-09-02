@@ -50,11 +50,11 @@ def main(config_file):
                     if verbose:
                         print(point)
 
-                    ## Close db connection
-                    if verbose:
-                        print("Closing connection to InfluxDB...")
-                    db_client.close()
-                    db_client = None
+                ## Close db connection
+                if verbose:
+                    print("Closing connection to InfluxDB...")
+                db_client.close()
+                db_client = None
             ## Handle exceptions
             except ReadTimeoutError as e:
                 if verbose:
