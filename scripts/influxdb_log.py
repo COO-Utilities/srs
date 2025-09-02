@@ -63,6 +63,8 @@ def main(config_file):
                 print(f"Unexpected error: {e}, will retry.")
 
             # Sleep for interval_secs
+            if verbose:
+                print(f"Waiting {cfg['interval_secs']:d} seconds...")
             time.sleep(cfg['interval_secs'])
 
     except KeyboardInterrupt:
