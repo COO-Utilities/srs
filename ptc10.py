@@ -7,6 +7,7 @@ import logging
 import sys
 import socket
 
+
 class PTC10:
     """
     Interface for controlling the PTC10 controller.

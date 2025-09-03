@@ -9,28 +9,29 @@ import ptc10
 
 # cfg_file = files('scripts'), 'influxdb_config.json')
 
+
 def main(config_file):
     """Query user for setup info and start logging to InfluxDB."""
 
-    ## read config file
+    # read the config file
     with open(config_file, encoding='utf-8') as cfg_file:
         cfg = json.load(cfg_file)
 
     verbose = cfg['verbose'] == 1
 
-    ## Connect to SRS PTC10
+    # Connect to SRS PTC10
     if verbose:
         print("Connecting to SRS PTC10 controller...")
     ptc = ptc10.PTC10()
     ptc.connect(host=cfg['device_host'], port=cfg['device_port'])
 
-    ## Try/except to catch exceptions
+    # Try/except to catch exceptions
     db_client = None
     try:
-        ## Loop until ctrl-C
+        # Loop until ctrl-C
         while True:
             try:
-                ## Connect to InfluxDB
+                # Connect to InfluxDB
                 if verbose:
                     print("Connecting to InfluxDB...")
                 db_client = InfluxDBClient(url=cfg['db_url'], token=cfg['db_token'],
@@ -50,12 +51,12 @@ def main(config_file):
                     if verbose:
                         print(point)
 
-                ## Close db connection
+                # Close db connection
                 if verbose:
                     print("Closing connection to InfluxDB...")
                 db_client.close()
                 db_client = None
-            ## Handle exceptions
+            # Handle exceptions
             except ReadTimeoutError as e:
                 if verbose:
                     print(f"ReadTimeoutError occurred: {e}, will retry.")
@@ -72,6 +73,7 @@ def main(config_file):
         if db_client:
             db_client.close()
         ptc.close()
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
