@@ -13,5 +13,6 @@
   "device_host": "srs_ptc10",
   "device_port": 23,
   "interval_secs": 30,
-  "verbose": 0
+  "verbose": 0,
+  "logfile": ""
 }

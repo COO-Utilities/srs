@@ -2,6 +2,7 @@
 import time
 import sys
 import json
+import logging
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from urllib3.exceptions import ReadTimeoutError
@@ -19,9 +20,26 @@ def main(config_file):
 
     verbose = cfg['verbose'] == 1
 
+    # Do we have a logfile?
+    if cfg['logfile'] is not None:
+        # log to a file
+        logger = logging.getLogger(cfg['logfile'])
+        if verbose:
+            logger.setLevel(logging.DEBUG)
+        else:
+            logger.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler = logging.FileHandler(cfg['logfile'], mode='w')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    else:
+        logger = None
+
     # Connect to SRS PTC10
     if verbose:
         print("Connecting to SRS PTC10 controller...")
+    if logger:
+        logger.info('Connecting to InfluxDB controller...')
     ptc = ptc10.PTC10()
     ptc.connect(host=cfg['device_host'], port=cfg['device_port'])
 
@@ -34,6 +52,8 @@ def main(config_file):
                 # Connect to InfluxDB
                 if verbose:
                     print("Connecting to InfluxDB...")
+                if logger:
+                    logger.info('Connecting to InfluxDB...')
                 db_client = InfluxDBClient(url=cfg['db_url'], token=cfg['db_token'],
                                            org=cfg['db_org'])
                 write_api = db_client.write_api(write_options=SYNCHRONOUS)
@@ -50,26 +70,38 @@ def main(config_file):
                     write_api.write(bucket=cfg['db_bucket'], org=cfg['db_org'], record=point)
                     if verbose:
                         print(point)
+                    if logger:
+                        logger.debug(point)
 
                 # Close db connection
                 if verbose:
                     print("Closing connection to InfluxDB...")
+                if logger:
+                    logger.info('Closing connection to InfluxDB...')
                 db_client.close()
                 db_client = None
             # Handle exceptions
             except ReadTimeoutError as e:
                 if verbose:
                     print(f"ReadTimeoutError occurred: {e}, will retry.")
+                if logger:
+                    logger.critical("ReadTimeoutError occurred: %s, will retry.", e)
             except Exception as e:
                 print(f"Unexpected error: {e}, will retry.")
+                if logger:
+                    logger.critical("Unexpected error: %s, will retry.", e)
 
             # Sleep for interval_secs
             if verbose:
                 print(f"Waiting {cfg['interval_secs']:d} seconds...")
+            if logger:
+                logger.info("Waiting %d seconds...", cfg['interval_secs'])
             time.sleep(cfg['interval_secs'])
 
     except KeyboardInterrupt:
         print("\nShutting down InfluxDB logging...")
+        if logger:
+            logger.critical("Shutting down InfluxDB logging...")
         if db_client:
             db_client.close()
         ptc.close()
