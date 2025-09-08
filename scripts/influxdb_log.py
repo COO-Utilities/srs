@@ -80,12 +80,13 @@ def main(config_file):
                     logger.info('Closing connection to InfluxDB...')
                 db_client.close()
                 db_client = None
+
             # Handle exceptions
             except ReadTimeoutError as e:
                 if verbose:
-                    print(f"ReadTimeoutError occurred: {e}, will retry.")
+                    print(f"ReadTimeoutError: {e}, will retry.")
                 if logger:
-                    logger.critical("ReadTimeoutError occurred: %s, will retry.", e)
+                    logger.critical("ReadTimeoutError: %s, will retry.", e)
             except Exception as e:
                 print(f"Unexpected error: {e}, will retry.")
                 if logger:
