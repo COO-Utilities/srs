@@ -29,7 +29,7 @@ def main(config_file):
         else:
             logger.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        file_handler = logging.FileHandler(cfg['logfile'], mode='w')
+        file_handler = logging.FileHandler(cfg['logfile'])
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
     else:
@@ -42,6 +42,9 @@ def main(config_file):
         logger.info('Connecting to InfluxDB controller...')
     ptc = ptc10.PTC10()
     ptc.connect(host=cfg['device_host'], port=cfg['device_port'])
+
+    # get channels to log
+    channels = cfg['log_channels']
 
     # Try/except to catch exceptions
     db_client = None
@@ -57,7 +60,6 @@ def main(config_file):
                 db_client = InfluxDBClient(url=cfg['db_url'], token=cfg['db_token'],
                                            org=cfg['db_org'])
                 write_api = db_client.write_api(write_options=SYNCHRONOUS)
-                channels = cfg['log_channels']
 
                 for chan in channels:
                     value = ptc.get_channel_value(chan)
@@ -83,8 +85,7 @@ def main(config_file):
 
             # Handle exceptions
             except ReadTimeoutError as e:
-                if verbose:
-                    print(f"ReadTimeoutError: {e}, will retry.")
+                print(f"ReadTimeoutError: {e}, will retry.")
                 if logger:
                     logger.critical("ReadTimeoutError: %s, will retry.", e)
             except Exception as e:
