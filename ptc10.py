@@ -53,7 +53,7 @@ class PTC10:
         try:
             self.sock.connect((host, port))
             if self.logger:
-                self.logger.debug("Connected to %(host)s:%(port)s", {
+                self.logger.info("Connected to %(host)s:%(port)s", {
                     'host': host,
                     'port': port
                 })
@@ -63,7 +63,7 @@ class PTC10:
         except OSError as e:
             if e.errno == EISCONN:
                 if self.logger:
-                    self.logger.debug("Already connected")
+                    self.logger.info("Already connected")
                 self.connected = True
                 self.success = True
             else:
@@ -140,7 +140,7 @@ class PTC10:
         Close the connection to the controller.
         """
         try:
-            self.logger.debug('Closing connection to controller')
+            self.logger.info('Closing connection to controller')
             self.sock.close()
         except Exception as ex:
             raise IOError(f"Failed to close connection: {ex}") from ex
