@@ -39,7 +39,7 @@ def main(config_file):
     if verbose:
         print("Connecting to SRS PTC10 controller...")
     if logger:
-        logger.info('Connecting to InfluxDB controller...')
+        logger.info('Connecting to SRS PTC10 controller...')
     ptc = ptc10.PTC10()
     ptc.connect(host=cfg['device_host'], port=cfg['device_port'])
 
