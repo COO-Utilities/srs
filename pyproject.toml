@@ -17,7 +17,8 @@ dependencies = [
     "keyring",
     "pipython",
     "pyserial",
-    "libximc"
+    "libximc",
+    "pytest"
 ]
 [tool.pytest.ini_options]
 pythonpath = [
