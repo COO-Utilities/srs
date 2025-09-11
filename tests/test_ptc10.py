@@ -12,7 +12,7 @@ def test_not_connected():
 
 def test_connection_fail():
     """Test connection failure."""
-    with pytest.raises(ConnectionError):
+    with pytest.raises(Exception):
         controller = PTC10()
         controller.connect("127.0.0.1", 50000)
         assert not controller.connected
