@@ -1,6 +1,6 @@
 # PTC10 Python Interface
 
-A low level library for communicating with the **Stanford Research Systems PTC10 Programmable Temperature Controller** via RS-232, USB, or Ethernet.
+A low level library for communicating with the **Stanford Research Systems PTC10 Programmable Temperature Controller** via Ethernet.
 
 ## Features
 
@@ -14,7 +14,6 @@ A low level library for communicating with the **Stanford Research Systems PTC10
 ## Requirements
 
 - Python 3.8+
-- `pyserial` (only required for serial communication)
 
 ## Getting Started
 
@@ -23,7 +22,6 @@ A low level library for communicating with the **Stanford Research Systems PTC10
 ```
 ptc10/
 ├── __init__.py
-├── ptc10_connection.py
 ├── ptc10.py
 └── README.md
 ```
@@ -55,8 +53,8 @@ ptc.close()
 
 ### `PTC10`
 
-#### `connect() -> PTC10`
-Creates and returns a connected PTC10 instance.
+#### `connect()`
+Connects to PTC10.
 
 #### `close()`
 Closes the connection to the controller
