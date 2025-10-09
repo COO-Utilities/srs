@@ -26,11 +26,19 @@ class PTC10:
             logfile (str, optional): Path to log file.
             log (bool): If True, start logging.
         """
+        # set up logging
+        if logfile is None:
+            logfile = __name__.rsplit('.', 1)[-1]
+        self.logger = logging.getLogger(logfile)
+        self.logger.setLevel(logging.INFO)
+        # log to console by default
+        console_formatter = logging.Formatter(
+            '%(asctime)s--%(message)s')
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(console_formatter)
+        self.logger.addHandler(console_handler)
+        # log to file if requested
         if log:
-            if logfile is None:
-                logfile = __name__.rsplit('.', 1)[-1] + '.log'
-            self.logger = logging.getLogger(logfile)
-            self.logger.setLevel(logging.INFO)
             formatter = logging.Formatter(
                 '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
             )
@@ -38,13 +46,6 @@ class PTC10:
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
 
-            console_formatter = logging.Formatter(
-                '%(asctime)s--%(message)s')
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setFormatter(console_formatter)
-            self.logger.addHandler(console_handler)
-        else:
-            self.logger = None
 
     def connect(self, host: str, port: int) -> None:
         """ Connect to controller. """
@@ -135,7 +136,7 @@ class PTC10:
         self.write(msg)
         return self.read()
 
-    def close(self):
+    def disconnect(self):
         """
         Close the connection to the controller.
         """
