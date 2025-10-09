@@ -33,7 +33,7 @@ class PTC10:
         self.logger.setLevel(logging.INFO)
         # log to console by default
         console_formatter = logging.Formatter(
-            '%(asctime)s--%(message)s')
+            '%(asctime)s - %(levelname)s - %(message)s')
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(console_formatter)
         self.logger.addHandler(console_handler)
