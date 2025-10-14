@@ -104,7 +104,7 @@ def main(config_file):
             logger.critical("Shutting down InfluxDB logging...")
         if db_client:
             db_client.close()
-        ptc.close()
+        ptc.disconnect()
 
 
 if __name__ == "__main__":
