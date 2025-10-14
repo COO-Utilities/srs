@@ -8,13 +8,11 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 from urllib3.exceptions import ReadTimeoutError
 import ptc10
 
-# cfg_file = files('scripts'), 'influxdb_config.json')
-
 
 def main(config_file):
     """Query user for setup info and start logging to InfluxDB."""
 
-    # read the config file
+    # _read_reply the config file
     with open(config_file, encoding='utf-8') as cfg_file:
         cfg = json.load(cfg_file)
 
@@ -62,7 +60,7 @@ def main(config_file):
                 write_api = db_client.write_api(write_options=SYNCHRONOUS)
 
                 for chan in channels:
-                    value = ptc.get_channel_value(chan)
+                    value = ptc.get_atomic_value(chan)
                     point = (
                         Point("srs_ptc10")
                         .field(channels[chan]['field'], value)
