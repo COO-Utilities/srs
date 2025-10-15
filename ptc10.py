@@ -24,31 +24,46 @@ class PTC10(HardwareDeviceBase):
         super().__init__(log, logfile)
         self.sock: socket.socket | None = None
 
-    def connect(self, host: str, port: int) -> None:
+    def connect(self, *args, con_type="tcp") -> None:
         """ Connect to controller. """
-        if self.sock is None:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            self.sock.connect((host, port))
-            if self.logger:
-                self.logger.info("Connected to %(host)s:%(port)s", {
-                    'host': host,
-                    'port': port
-                })
-            self._set_connected(True)
-
-        except OSError as e:
-            if e.errno == EISCONN:
+        if con_type == "tcp":
+            if len(args) < 2:
+                self.logger.error("connect requires 2 arguments: host and port")
+            host = args[0]
+            if not isinstance(host, str):
+                self.logger.error("connect requires host as a string")
+                return
+            port = args[1]
+            if not isinstance(port, int):
+                self.logger.error("connect requires port as an integer")
+                return
+            if self.sock is None:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                self.sock.connect((host, port))
                 if self.logger:
-                    self.logger.info("Already connected")
+                    self.logger.info("Connected to %(host)s:%(port)s", {
+                        'host': host,
+                        'port': port
+                    })
                 self._set_connected(True)
-            else:
-                if self.logger:
-                    self.logger.error("Connection error: %s", e.strerror)
-                self.set_connected(False)
-        # clear socket
-        if self.connected:
-            self._clear_socket()
+
+            except OSError as e:
+                if e.errno == EISCONN:
+                    if self.logger:
+                        self.logger.info("Already connected")
+                    self._set_connected(True)
+                else:
+                    if self.logger:
+                        self.logger.error("Connection error: %s", e.strerror)
+                    self._set_connected(False)
+            # clear socket
+            if self.connected:
+                self._clear_socket()
+        elif con_type == "serial":
+            self.logger.error("Serial connection not yet implemented")
+        else:
+            self.logger.error("Unknown con_type: %s", con_type)
 
     def _clear_socket(self):
         """ Clear socket buffer. """
@@ -61,18 +76,19 @@ class PTC10(HardwareDeviceBase):
                     break
             self.sock.setblocking(True)
 
-    def _send_command(self, msg: str):
+    def _send_command(self, command: str, *args) -> bool:
         """
         Send a message to the controller (adds newline).
 
         Args:
-            msg (str): The message to send (e.g., '3A?').
+            command (str): The message to send (e.g., '3A?').
         """
         try:
-            self.logger.debug('Sending: %s', msg)
-            self.sock.sendall((msg + "\n").encode())
+            self.logger.debug('Sending: %s', command)
+            self.sock.sendall((command + "\n").encode())
         except Exception as ex:
             raise IOError(f'Failed to write message: {ex}') from ex
+        return True
 
     def _read_reply(self) -> str:
         """
@@ -130,7 +146,7 @@ class PTC10(HardwareDeviceBase):
             self.channel_names = self.get_channel_names()
         return channel_name in self.channel_names
 
-    def get_atomic_value(self, channel: str) -> float:
+    def get_atomic_value(self, channel: str ="") -> float:
         """
         Read the latest value of a specific channel.
 
