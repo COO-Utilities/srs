@@ -26,44 +26,36 @@ class PTC10(HardwareDeviceBase):
 
     def connect(self, *args, con_type="tcp") -> None:
         """ Connect to controller. """
-        if con_type == "tcp":
-            if len(args) < 2:
-                self.logger.error("connect requires 2 arguments: host and port")
-            host = args[0]
-            if not isinstance(host, str):
-                self.logger.error("connect requires host as a string")
-                return
-            port = args[1]
-            if not isinstance(port, int):
-                self.logger.error("connect requires port as an integer")
-                return
-            if self.sock is None:
-                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            try:
-                self.sock.connect((host, port))
-                if self.logger:
+        if self.validate_connection_params(args):
+            if con_type == "tcp":
+                host = args[0]
+                port = args[1]
+                if self.sock is None:
+                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                try:
+                    self.sock.connect((host, port))
                     self.logger.info("Connected to %(host)s:%(port)s", {
                         'host': host,
                         'port': port
                     })
-                self._set_connected(True)
-
-            except OSError as e:
-                if e.errno == EISCONN:
-                    if self.logger:
-                        self.logger.info("Already connected")
                     self._set_connected(True)
-                else:
-                    if self.logger:
+
+                except OSError as e:
+                    if e.errno == EISCONN:
+                        self.logger.info("Already connected")
+                        self._set_connected(True)
+                    else:
                         self.logger.error("Connection error: %s", e.strerror)
-                    self._set_connected(False)
-            # clear socket
-            if self.connected:
-                self._clear_socket()
-        elif con_type == "serial":
-            self.logger.error("Serial connection not yet implemented")
+                        self._set_connected(False)
+                # clear socket
+                if self.is_connected():
+                    self._clear_socket()
+            elif con_type == "serial":
+                self.logger.error("Serial connection not yet implemented")
+            else:
+                self.logger.error("Unknown con_type: %s", con_type)
         else:
-            self.logger.error("Unknown con_type: %s", con_type)
+            self.logger.error("Invalid connection arguments: %s", args)
 
     def _clear_socket(self):
         """ Clear socket buffer. """
@@ -85,7 +77,8 @@ class PTC10(HardwareDeviceBase):
         """
         try:
             self.logger.debug('Sending: %s', command)
-            self.sock.sendall((command + "\n").encode())
+            with self.lock:
+                self.sock.sendall((command + "\n").encode())
         except Exception as ex:
             raise IOError(f'Failed to write message: {ex}') from ex
         return True
@@ -136,8 +129,7 @@ class PTC10(HardwareDeviceBase):
             str: Device identification (e.g. manufacturer, model, serial number, firmware version).
         """
         id_str = self.query("*IDN?")
-        if self.logger:
-            self.logger.info("Device identification: %s", id_str)
+        self.logger.info("Device identification: %s", id_str)
         return id_str
 
     def validate_channel_name(self, channel_name: str) -> bool:
@@ -163,22 +155,15 @@ class PTC10(HardwareDeviceBase):
             response = self.query(f"{query_channel}?")
             try:
                 value = float(response)
-                if self.logger:
-                    self.logger.debug("Channel %s value: %f", channel, value)
+                self.logger.debug("Channel %s value: %f", channel, value)
                 return value
             except ValueError:
-                if self.logger:
-                    self.logger.error(
-                        "Invalid float returned for channel %s: %s", channel, response
-                    )
-                else:
-                    print("Invalid float returned for channel %s: %s", channel, response)
+                self.logger.error(
+                    "Invalid float returned for channel %s: %s", channel, response
+                )
                 return float("nan")
         else:
-            if self.logger:
-                self.logger.error("Invalid channel name: %s", channel)
-            else:
-                print("Invalid channel name: %s", channel)
+            self.logger.error("Invalid channel name: %s", channel)
             return float("nan")
 
     def get_all_values(self) -> List[float]:
@@ -192,8 +177,7 @@ class PTC10(HardwareDeviceBase):
         values = [
             float(val) if val != "NaN" else float("nan") for val in response.split(",")
         ]
-        if self.logger:
-            self.logger.debug("Output values: %s", values)
+        self.logger.debug("Output values: %s", values)
         return values
 
     def get_channel_names(self) -> List[str]:
@@ -205,8 +189,7 @@ class PTC10(HardwareDeviceBase):
         """
         response = self.query("getOutputNames?")
         names = [name.strip() for name in response.split(",")]
-        if self.logger:
-            self.logger.debug("Channel names: %s", names)
+        self.logger.debug("Channel names: %s", names)
         return names
 
     def get_named_output_dict(self) -> Dict[str, float]:
@@ -219,6 +202,5 @@ class PTC10(HardwareDeviceBase):
         names = self.get_channel_names()
         values = self.get_all_values()
         output_dict = dict(zip(names, values))
-        if self.logger:
-            self.logger.debug("Named outputs: %s", output_dict)
+        self.logger.debug("Named outputs: %s", output_dict)
         return output_dict
