@@ -116,7 +116,8 @@ class PTC10(HardwareDeviceBase):
         """
         try:
             self.logger.info('Closing connection to controller')
-            self.sock.close()
+            if self.sock:
+                self.sock.close()
             self._set_connected(False)
         except Exception as ex:
             raise IOError(f"Failed to close connection: {ex}") from ex
