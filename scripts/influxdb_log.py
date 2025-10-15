@@ -39,7 +39,7 @@ def main(config_file):
     if logger:
         logger.info('Connecting to SRS PTC10 controller...')
     ptc = ptc10.PTC10()
-    ptc.connect(host=cfg['device_host'], port=cfg['device_port'])
+    ptc.connect(cfg['device_host'], cfg['device_port'])
 
     # get channels to log
     channels = cfg['log_channels']
