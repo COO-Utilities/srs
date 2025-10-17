@@ -14,8 +14,13 @@ A low level library for communicating with the **Stanford Research Systems PTC10
 ## Requirements
 
 - Python 3.8+
+- Install base class from https://github.com/COO-Utilities/hardware_device_base
 
-## Getting Started
+## Installation
+
+```bash
+pip install .
+```
 
 ### Project Structure
 
@@ -32,7 +37,8 @@ ptc10/
 import ptc10
 
 # Ethernet example
-ptc = ptc10.PTC10.connect(host="192.168.29.150", port=23)
+ptc = ptc10.PTC10()
+ptc.connect("192.168.29.150", 23)
 
 # Identify controller
 print("Device ID:", ptc.identify())
@@ -56,7 +62,7 @@ ptc.close()
 #### `connect()`
 Connects to PTC10.
 
-#### `close()`
+#### `disconnect()`
 Closes the connection to the controller
 
 #### `identify() -> str`
