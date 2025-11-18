@@ -5,7 +5,7 @@ from typing import List, Dict, Union
 from errno import EISCONN
 import socket
 
-from hardware_device_base import HardwareSensorBase
+from hardware_device_base.hardware_sensor_base import HardwareSensorBase
 
 class PTC10(HardwareSensorBase):
     """
