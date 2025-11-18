@@ -1,13 +1,13 @@
 """
 PTC10 Controller Interface
 """
-from typing import List, Dict
+from typing import List, Dict, Union
 from errno import EISCONN
 import socket
 
-from hardware_device_base import HardwareDeviceBase
+from hardware_device_base import HardwareSensorBase
 
-class PTC10(HardwareDeviceBase):
+class PTC10(HardwareSensorBase):
     """
     Interface for controlling the PTC10 controller.
     """
@@ -38,24 +38,30 @@ class PTC10(HardwareDeviceBase):
                         'host': host,
                         'port': port
                     })
+                    self._set_status((0, f"Connected to {host}:{port}"))
                     self._set_connected(True)
 
                 except OSError as e:
                     if e.errno == EISCONN:
                         self.logger.info("Already connected")
+                        self._set_status((0, "Already connected"))
                         self._set_connected(True)
                     else:
                         self.logger.error("Connection error: %s", e.strerror)
+                        self._set_status((-1, f"Connection error{e.strerror}"))
                         self._set_connected(False)
                 # clear socket
                 if self.is_connected():
                     self._clear_socket()
             elif con_type == "serial":
                 self.logger.error("Serial connection not yet implemented")
+                self._set_status((-1, "Serial connection not yet implemented"))
             else:
                 self.logger.error("Unknown con_type: %s", con_type)
+                self._set_status((-1, f"Unknown con_type: {con_type}"))
         else:
             self.logger.error("Invalid connection arguments: %s", args)
+            self._set_status((-1, f"Invalid connection arguments: {args}"))
 
     def _clear_socket(self):
         """ Clear socket buffer. """
@@ -75,21 +81,30 @@ class PTC10(HardwareDeviceBase):
         Args:
             command (str): The message to send (e.g., '3A?').
         """
+        if not self.is_connected():
+            self.logger.error("Device not connected")
+            self._set_status((-1, "Not connected"))
+            return False
         try:
             self.logger.debug('Sending: %s', command)
             with self.lock:
                 self.sock.sendall((command + "\n").encode())
         except Exception as ex:
             raise IOError(f'Failed to write message: {ex}') from ex
+        self._set_status((0, "Command sent"))
         return True
 
-    def _read_reply(self) -> str:
+    def _read_reply(self) -> Union[str, None]:
         """
         Read a response from the controller.
 
         Returns:
             str: The received message, stripped of trailing newline.
         """
+        if not self.is_connected():
+            self.logger.error("Device not connected")
+            self._set_status((-1, "Not connected"))
+            return None
         try:
             retval = self.sock.recv(4096).decode().strip()
             self.logger.debug('Received: %s', retval)
@@ -114,11 +129,17 @@ class PTC10(HardwareDeviceBase):
         """
         Close the connection to the controller.
         """
+        if not self.is_connected():
+            self.logger.warning("Already disconnected from device")
+            self._set_status((0, "Already disconnected from device"))
         try:
             self.logger.info('Closing connection to controller')
             if self.sock:
                 self.sock.close()
+                self.sock = None
             self._set_connected(False)
+            self.logger.info("Disconnected from device")
+            self._set_status((0, "Disconnected from device"))
         except Exception as ex:
             raise IOError(f"Failed to close connection: {ex}") from ex
 
@@ -157,14 +178,17 @@ class PTC10(HardwareDeviceBase):
             try:
                 value = float(response)
                 self.logger.debug("Channel %s value: %f", channel, value)
+                self._set_status((0, "Atomic value retrieved"))
                 return value
             except ValueError:
                 self.logger.error(
                     "Invalid float returned for channel %s: %s", channel, response
                 )
+                self._set_status((-1, f"Invalid float returned for channel: {channel}"))
                 return float("nan")
         else:
             self.logger.error("Invalid channel name: %s", channel)
+            self._set_status((-1, f"Invalid channel name: {channel}"))
             return float("nan")
 
     def get_all_values(self) -> List[float]:
