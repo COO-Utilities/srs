@@ -43,8 +43,8 @@ ptc.connect("192.168.29.150", 23)
 # Identify controller
 print("Device ID:", ptc.identify())
 
-# Read a specific channel
-print("Temp at 3A:", ptc.get_channel_value("3A"))
+# Read a specific item
+print("Temp at 3A:", ptc.get_atomic_value("3A"))
 
 # Read all values
 print("All values:", ptc.get_all_values())

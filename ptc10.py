@@ -24,44 +24,33 @@ class PTC10(HardwareSensorBase):
         super().__init__(log, logfile)
         self.sock: socket.socket | None = None
 
-    def connect(self, *args, con_type="tcp") -> None:
+    def connect(self, host, port, con_type="tcp") -> None: # pylint: disable=W0221
         """ Connect to controller. """
-        if self.validate_connection_params(args):
+        if self.validate_connection_params((host, port)):
             if con_type == "tcp":
-                host = args[0]
-                port = args[1]
                 if self.sock is None:
                     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 try:
                     self.sock.connect((host, port))
-                    self.logger.info("Connected to %(host)s:%(port)s", {
-                        'host': host,
-                        'port': port
-                    })
-                    self._set_status((0, f"Connected to {host}:{port}"))
+                    self.report_info(f"Connected to {host}:{port}")
                     self._set_connected(True)
 
                 except OSError as e:
                     if e.errno == EISCONN:
-                        self.logger.info("Already connected")
-                        self._set_status((0, "Already connected"))
+                        self.report_info("Already connected")
                         self._set_connected(True)
                     else:
-                        self.logger.error("Connection error: %s", e.strerror)
-                        self._set_status((-1, f"Connection error{e.strerror}"))
+                        self.report_error(f"Connection error {e.strerror}")
                         self._set_connected(False)
                 # clear socket
                 if self.is_connected():
                     self._clear_socket()
             elif con_type == "serial":
-                self.logger.error("Serial connection not yet implemented")
-                self._set_status((-1, "Serial connection not yet implemented"))
+                self.report_error("Serial connection not yet implemented")
             else:
-                self.logger.error("Unknown con_type: %s", con_type)
-                self._set_status((-1, f"Unknown con_type: {con_type}"))
+                self.report_error(f"Unknown con_type: {con_type}")
         else:
-            self.logger.error("Invalid connection arguments: %s", args)
-            self._set_status((-1, f"Invalid connection arguments: {args}"))
+            self.report_error(f"Invalid connection arguments: {host}:{port}")
 
     def _clear_socket(self):
         """ Clear socket buffer. """
@@ -74,7 +63,7 @@ class PTC10(HardwareSensorBase):
                     break
             self.sock.setblocking(True)
 
-    def _send_command(self, command: str, *args) -> bool:
+    def _send_command(self, command: str) -> bool: # pylint: disable=W0221
         """
         Send a message to the controller (adds newline).
 
@@ -82,8 +71,7 @@ class PTC10(HardwareSensorBase):
             command (str): The message to send (e.g., '3A?').
         """
         if not self.is_connected():
-            self.logger.error("Device not connected")
-            self._set_status((-1, "Not connected"))
+            self.report_error("Device not connected")
             return False
         try:
             self.logger.debug('Sending: %s', command)
@@ -91,7 +79,7 @@ class PTC10(HardwareSensorBase):
                 self.sock.sendall((command + "\n").encode())
         except Exception as ex:
             raise IOError(f'Failed to write message: {ex}') from ex
-        self._set_status((0, "Command sent"))
+        self.report_info("Command sent")
         return True
 
     def _read_reply(self) -> Union[str, None]:
@@ -102,8 +90,7 @@ class PTC10(HardwareSensorBase):
             str: The received message, stripped of trailing newline.
         """
         if not self.is_connected():
-            self.logger.error("Device not connected")
-            self._set_status((-1, "Not connected"))
+            self.report_error("Device not connected")
             return None
         try:
             retval = self.sock.recv(4096).decode().strip()
@@ -130,16 +117,15 @@ class PTC10(HardwareSensorBase):
         Close the connection to the controller.
         """
         if not self.is_connected():
-            self.logger.warning("Already disconnected from device")
-            self._set_status((0, "Already disconnected from device"))
+            self.report_warning("Already disconnected from device")
+            return
         try:
             self.logger.info('Closing connection to controller')
             if self.sock:
                 self.sock.close()
                 self.sock = None
             self._set_connected(False)
-            self.logger.info("Disconnected from device")
-            self._set_status((0, "Disconnected from device"))
+            self.report_info("Disconnected from device")
         except Exception as ex:
             raise IOError(f"Failed to close connection: {ex}") from ex
 
@@ -155,40 +141,36 @@ class PTC10(HardwareSensorBase):
         return id_str
 
     def validate_channel_name(self, channel_name: str) -> bool:
-        """Is channel name valid?"""
+        """Is item name valid?"""
         if self.channel_names is None:
             self.channel_names = self.get_channel_names()
         return channel_name in self.channel_names
 
-    def get_atomic_value(self, channel: str ="") -> float:
+    def get_atomic_value(self, item: str = "") -> float:
         """
-        Read the latest value of a specific channel.
+        Read the latest value of a specific item.
 
         Args:
-            channel (str): Channel name (e.g., "3A", "Out1")
+            item (str): Channel name (e.g., "3A", "Out1")
 
         Returns:
             float: Current value, or NaN if invalid.
         """
-        if self.validate_channel_name(channel):
-            self.logger.debug("Channel name validated: %s", channel)
+        if self.validate_channel_name(item):
+            self.logger.debug("Channel name validated: %s", item)
             # Spaces not allowed
-            query_channel = channel.replace(" ", "")
+            query_channel = item.replace(" ", "")
             response = self.query(f"{query_channel}?")
             try:
                 value = float(response)
-                self.logger.debug("Channel %s value: %f", channel, value)
-                self._set_status((0, "Atomic value retrieved"))
+                self.logger.debug("Channel %s value: %f", item, value)
+                self.report_info("Atomic value retrieved")
                 return value
             except ValueError:
-                self.logger.error(
-                    "Invalid float returned for channel %s: %s", channel, response
-                )
-                self._set_status((-1, f"Invalid float returned for channel: {channel}"))
+                self.report_error(f"Invalid float returned for item{item}: {response}")
                 return float("nan")
         else:
-            self.logger.error("Invalid channel name: %s", channel)
-            self._set_status((-1, f"Invalid channel name: {channel}"))
+            self.report_error(f"Invalid item name: {item}")
             return float("nan")
 
     def get_all_values(self) -> List[float]:
@@ -207,10 +189,10 @@ class PTC10(HardwareSensorBase):
 
     def get_channel_names(self) -> List[str]:
         """
-        Get the list of channel names corresponding to the getOutput() values.
+        Get the list of item names corresponding to the getOutput() values.
 
         Returns:
-            List[str]: List of channel names.
+            List[str]: List of item names.
         """
         response = self.query("getOutputNames?")
         names = [name.strip() for name in response.split(",")]
@@ -219,10 +201,10 @@ class PTC10(HardwareSensorBase):
 
     def get_named_output_dict(self) -> Dict[str, float]:
         """
-        Get a dictionary mapping channel names to their current values.
+        Get a dictionary mapping item names to their current values.
 
         Returns:
-            Dict[str, float]: Mapping of channel names to values.
+            Dict[str, float]: Mapping of item names to values.
         """
         names = self.get_channel_names()
         values = self.get_all_values()
