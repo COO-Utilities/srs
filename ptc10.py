@@ -47,10 +47,13 @@ class PTC10(HardwareSensorBase):
                     self._clear_socket()
             elif con_type == "serial":
                 self.report_error("Serial connection not yet implemented")
+                self._set_connected(False)
             else:
-                self.report_error(f"Unknown con_type: {con_type}")
+                self.report_error(f"Unknown connection type: {con_type}")
+                self._set_connected(False)
         else:
             self.report_error(f"Invalid connection arguments: {host}:{port}")
+            self._set_connected(False)
 
     def _clear_socket(self):
         """ Clear socket buffer. """
@@ -129,6 +132,7 @@ class PTC10(HardwareSensorBase):
             self.report_info("Disconnected from device")
         except Exception as ex:
             raise IOError(f"Failed to close connection: {ex}") from ex
+        self.report_info("Disconnected from controller")
 
     def identify(self) -> str:
         """
