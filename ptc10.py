@@ -78,8 +78,9 @@ class PTC10(HardwareSensorBase):
             with self.lock:
                 self.sock.sendall((command + "\n").encode())
         except Exception as ex:
+            self.report_error(f"Failed to send command: {ex}")
             raise IOError(f'Failed to write message: {ex}') from ex
-        self.report_info("Command sent")
+        self.logger.debug("Command sent")
         return True
 
     def _read_reply(self) -> Union[str, None]:
