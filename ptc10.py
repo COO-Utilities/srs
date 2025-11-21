@@ -5,7 +5,7 @@ from typing import List, Dict, Union
 from errno import EISCONN
 import socket
 
-from hardware_device_base.hardware_sensor_base import HardwareSensorBase
+from hardware_device_base import HardwareSensorBase
 
 class PTC10(HardwareSensorBase):
     """
@@ -82,7 +82,7 @@ class PTC10(HardwareSensorBase):
                 self.sock.sendall((command + "\n").encode())
         except Exception as ex:
             self.report_error(f"Failed to send command: {ex}")
-            raise IOError(f'Failed to write message: {ex}') from ex
+            raise IOError(f'Failed to send command: {ex}') from ex
         self.logger.debug("Command sent")
         return True
 
@@ -132,7 +132,6 @@ class PTC10(HardwareSensorBase):
             self.report_info("Disconnected from device")
         except Exception as ex:
             raise IOError(f"Failed to close connection: {ex}") from ex
-        self.report_info("Disconnected from controller")
 
     def identify(self) -> str:
         """
