@@ -77,13 +77,13 @@ class PTC10(HardwareSensorBase):
             self.report_error("Device not connected")
             return False
         try:
-            self.logger.debug('Sending: %s', command)
+            self.report_debug(f"Sending: {command}")
             with self.lock:
                 self.sock.sendall((command + "\n").encode())
         except Exception as ex:
             self.report_error(f"Failed to send command: {ex}")
-            raise IOError(f'Failed to send command: {ex}') from ex
-        self.logger.debug("Command sent")
+            raise IOError(f"Failed to send command: {ex}") from ex
+        self.report_debug("Command sent")
         return True
 
     def _read_reply(self) -> Union[str, None]:
@@ -98,7 +98,7 @@ class PTC10(HardwareSensorBase):
             return None
         try:
             retval = self.sock.recv(4096).decode().strip()
-            self.logger.debug('Received: %s', retval)
+            self.report_debug(f"Received: {retval}")
             return retval
         except Exception as ex:
             raise IOError(f"Failed to _read_reply message: {ex}") from ex
@@ -124,7 +124,7 @@ class PTC10(HardwareSensorBase):
             self.report_warning("Already disconnected from device")
             return
         try:
-            self.logger.info('Closing connection to controller')
+            self.report_info('Closing connection to controller')
             if self.sock:
                 self.sock.close()
                 self.sock = None
@@ -141,7 +141,7 @@ class PTC10(HardwareSensorBase):
             str: Device identification (e.g. manufacturer, model, serial number, firmware version).
         """
         id_str = self.query("*IDN?")
-        self.logger.info("Device identification: %s", id_str)
+        self.report_info(f"Device identification: {id_str}")
         return id_str
 
     def validate_channel_name(self, channel_name: str) -> bool:
@@ -161,13 +161,13 @@ class PTC10(HardwareSensorBase):
             float: Current value, or NaN if invalid.
         """
         if self.validate_channel_name(item):
-            self.logger.debug("Channel name validated: %s", item)
+            self.report_debug(f"Channel name validated: {item}")
             # Spaces not allowed
             query_channel = item.replace(" ", "")
             response = self.query(f"{query_channel}?")
             try:
                 value = float(response)
-                self.logger.debug("Channel %s value: %f", item, value)
+                self.report_debug(f"Channel {item} value: {value}")
                 self.report_info("Atomic value retrieved")
                 return value
             except ValueError:
@@ -188,7 +188,7 @@ class PTC10(HardwareSensorBase):
         values = [
             float(val) if val != "NaN" else float("nan") for val in response.split(",")
         ]
-        self.logger.debug("Output values: %s", values)
+        self.report_debug(f"Output values: {values}")
         return values
 
     def get_channel_names(self) -> List[str]:
@@ -200,7 +200,7 @@ class PTC10(HardwareSensorBase):
         """
         response = self.query("getOutputNames?")
         names = [name.strip() for name in response.split(",")]
-        self.logger.debug("Channel names: %s", names)
+        self.report_debug(f"Channel names: {names}")
         return names
 
     def get_named_output_dict(self) -> Dict[str, float]:
@@ -213,5 +213,5 @@ class PTC10(HardwareSensorBase):
         names = self.get_channel_names()
         values = self.get_all_values()
         output_dict = dict(zip(names, values))
-        self.logger.debug("Named outputs: %s", output_dict)
+        self.report_debug(f"Named outputs: {output_dict}")
         return output_dict
