@@ -87,3 +87,23 @@ Returns a dictionary mapping each channel name to its latest value.
 - All messages must end in `\n` (linefeed). This is handled automatically by the connection class.
 - Commands like `3A?`, `Out1?`, `getOutput?`, and `getOutputNames?` follow the PTC10 manual.
 - Invalid channels or disconnected sensors will return `NaN`.
+
+## Class Diagram
+
+Below is a class diagram of the added methods and attributes for the SRS PTC10.
+See the README for the hardware_device_base module for the inherited methods and
+attributes.
+
+```mermaid
+classDiagram
+    class PTC10 {
+        +socket sock
+        _clear_socket()
+        query() str
+        identify() str
+        validate_channel_name() bool
+        get_all_values() List[float]
+        get_channel_names() List[str]
+        get_named_output_dict() Dict[str, float]
+    }
+```
