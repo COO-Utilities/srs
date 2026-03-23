@@ -215,3 +215,33 @@ class PTC10(HardwareSensorBase):
         output_dict = dict(zip(names, values))
         self.report_debug(f"Named outputs: {output_dict}")
         return output_dict
+
+    def is_output_enabled(self) -> bool:
+        """
+        Check if the heater output is enabled.
+        Returns:
+            bool: True if heater output is enabled, False otherwise.
+        """
+        value = self.query("outputEnable?")
+        if "On" in value:
+            return True
+        return False
+
+    def output_enable(self) -> bool:
+        """
+        Enable the heater output.
+
+        NB. Only use this if the PID loops have been set up.
+
+        Returns:
+            bool: True if command succeeded, False otherwise.
+        """
+        return self._send_command("outputEnable on")
+
+    def output_disable(self) -> bool:
+        """
+        Disable the heater output.
+        Returns:
+            bool: True if command succeeded, False otherwise.
+        """
+        return self._send_command("outputEnable off")
