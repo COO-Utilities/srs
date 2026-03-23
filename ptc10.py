@@ -23,6 +23,7 @@ class PTC10(HardwareSensorBase):
         """
         super().__init__(log, logfile)
         self.sock: socket.socket | None = None
+        self.id_str: str = ""
 
     def connect(self, host, port, con_type="tcp") -> None: # pylint: disable=W0221
         """ Connect to controller. """
@@ -202,6 +203,17 @@ class PTC10(HardwareSensorBase):
         names = [name.strip() for name in response.split(",")]
         self.report_debug(f"Channel names: {names}")
         return names
+
+    def initialize(self) -> None:
+        """Initialize the controller."""
+        self.report_info("Initializing controller")
+        self.id_str = self.identify()
+        self.channel_names = self.get_channel_names()
+        if self.is_output_enabled():
+            self.report_info("Outputs enabled")
+        else:
+            self.report_warning("Outputs disabled")
+        self.initialized = True
 
     def get_named_output_dict(self) -> Dict[str, float]:
         """
