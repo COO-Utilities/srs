@@ -23,6 +23,7 @@ class PTC10(HardwareSensorBase):
         """
         super().__init__(log, logfile)
         self.sock: socket.socket | None = None
+        self.id_str: str = ""
 
     def connect(self, host, port, con_type="tcp") -> None: # pylint: disable=W0221
         """ Connect to controller. """
@@ -203,6 +204,17 @@ class PTC10(HardwareSensorBase):
         self.report_debug(f"Channel names: {names}")
         return names
 
+    def initialize(self) -> None:
+        """Initialize the controller."""
+        self.report_info("Initializing controller")
+        self.id_str = self.identify()
+        self.channel_names = self.get_channel_names()
+        if self.is_output_enabled():
+            self.report_info("Outputs enabled")
+        else:
+            self.report_warning("Outputs disabled")
+        self.initialized = True
+
     def get_named_output_dict(self) -> Dict[str, float]:
         """
         Get a dictionary mapping item names to their current values.
@@ -215,3 +227,33 @@ class PTC10(HardwareSensorBase):
         output_dict = dict(zip(names, values))
         self.report_debug(f"Named outputs: {output_dict}")
         return output_dict
+
+    def is_output_enabled(self) -> bool:
+        """
+        Check if the heater output is enabled.
+        Returns:
+            bool: True if heater output is enabled, False otherwise.
+        """
+        value = self.query("outputEnable?")
+        if "On" in value:
+            return True
+        return False
+
+    def output_enable(self) -> bool:
+        """
+        Enable the heater output.
+
+        NB. Only use this if the PID loops have been set up.
+
+        Returns:
+            bool: True if command succeeded, False otherwise.
+        """
+        return self._send_command("outputEnable on")
+
+    def output_disable(self) -> bool:
+        """
+        Disable the heater output.
+        Returns:
+            bool: True if command succeeded, False otherwise.
+        """
+        return self._send_command("outputEnable off")
