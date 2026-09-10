@@ -11,7 +11,6 @@ class PTC10(HardwareSensorBase):
     """
     Interface for controlling the PTC10 controller.
     """
-    channel_names = None
 
     def __init__(self, log: bool = True, logfile: str = __name__.rsplit(".", 1)[-1] ):
         """
@@ -24,6 +23,7 @@ class PTC10(HardwareSensorBase):
         super().__init__(log, logfile)
         self.sock: socket.socket | None = None
         self.id_str: str = ""
+        self.channel_names = None
 
     def connect(self, host, port, con_type="tcp") -> None: # pylint: disable=W0221
         """ Connect to controller. """
@@ -104,7 +104,7 @@ class PTC10(HardwareSensorBase):
         except Exception as ex:
             raise IOError(f"Failed to _read_reply message: {ex}") from ex
 
-    def query(self, msg: str) -> str:
+    def query(self, msg: str) -> str | None:
         """
         Send a command and _read_reply the immediate response.
 
@@ -134,7 +134,7 @@ class PTC10(HardwareSensorBase):
         except Exception as ex:
             raise IOError(f"Failed to close connection: {ex}") from ex
 
-    def identify(self) -> str:
+    def identify(self) -> str | None:
         """
         Query the device identification string.
 
@@ -165,7 +165,7 @@ class PTC10(HardwareSensorBase):
             self.report_debug(f"Channel name validated: {item}")
             # Spaces not allowed
             query_channel = item.replace(" ", "")
-            response = self.query(f"{query_channel}?")
+            response = str(self.query(f"{query_channel}?"))
             try:
                 value = float(response)
                 self.report_debug(f"Channel {item} value: {value}")
@@ -204,16 +204,17 @@ class PTC10(HardwareSensorBase):
         self.report_debug(f"Channel names: {names}")
         return names
 
-    def initialize(self) -> None:
+    def initialize(self) -> bool:
         """Initialize the controller."""
         self.report_info("Initializing controller")
-        self.id_str = self.identify()
+        self.id_str = str(self.identify())
         self.channel_names = self.get_channel_names()
         if self.is_output_enabled():
             self.report_info("Outputs enabled")
         else:
             self.report_warning("Outputs disabled")
         self.initialized = True
+        return self.initialized
 
     def get_named_output_dict(self) -> Dict[str, float]:
         """
