@@ -236,8 +236,9 @@ class PTC10(HardwareSensorBase):
             bool: True if heater output is enabled, False otherwise.
         """
         value = self.query("outputEnable?")
-        if "On" in value:
-            return True
+        if value is not None:
+            if "On" in value:
+                return True
         return False
 
     def output_enable(self) -> bool:
@@ -258,3 +259,33 @@ class PTC10(HardwareSensorBase):
             bool: True if command succeeded, False otherwise.
         """
         return self._send_command("outputEnable off")
+
+    def get_setpoint(self, channel) -> float | None:
+        """
+        Get heater setpoint.
+        Args:
+            channel (str): Channel name (e.g., "2A", "Out1")
+        Returns:
+            float: Setpoint in degrees Celsius.
+        """
+        if 'Out' not in channel:
+            self.report_error(f"Channel {channel} not an output channel")
+            return None
+        value = self.query(f"{channel}.PID.Setpoint?")
+        if value is not None:
+            return float(value)
+        return None
+
+    def set_setpoint(self, channel: str, setpoint: int) -> bool:
+        """
+        Get heater setpoint.
+        Args:
+            channel (str): Channel name (e.g., "2A", "Out1")
+            setpoint (int): Setpoint in degrees Celsius.
+        Returns:
+            bool: True if setpoint accepted, False otherwise.
+        """
+        if 'Out' not in channel:
+            self.report_error(f"Channel {channel} not an output channel")
+            return False
+        return self._send_command(f"{channel}.PID.Setpoint {setpoint}")
