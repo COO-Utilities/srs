@@ -271,14 +271,17 @@ class PTC10(HardwareSensorBase):
         if 'Out' not in channel:
             self.report_error(f"Channel {channel} not an output channel")
             return None
-        value = self.query(f"{channel}.PID.Setpoint?")
-        if value is not None:
-            return float(value)
+        if self.validate_channel_name(channel):
+            self.report_debug(f"Channel name validated: {channel}")
+            query_channel = channel.replace(" ", "")
+            value = self.query(f"{query_channel}.PID.Setpoint?")
+            if value is not None:
+                return float(value)
         return None
 
     def set_setpoint(self, channel: str, setpoint: int) -> bool:
         """
-        Get heater setpoint.
+        Set heater setpoint.
         Args:
             channel (str): Channel name (e.g., "2A", "Out1")
             setpoint (int): Setpoint in degrees Celsius.
@@ -288,4 +291,8 @@ class PTC10(HardwareSensorBase):
         if 'Out' not in channel:
             self.report_error(f"Channel {channel} not an output channel")
             return False
-        return self._send_command(f"{channel}.PID.Setpoint {setpoint}")
+        if self.validate_channel_name(channel):
+            self.report_debug(f"Channel name validated: {channel}")
+            query_channel = channel.replace(" ", "")
+            return self._send_command(f"{query_channel}.PID.Setpoint {setpoint}")
+        return False
